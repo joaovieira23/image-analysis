@@ -1,18 +1,54 @@
 'use strict';
+const { promises: { readFile } } = require('fs')
 
-module.exports.hello = async event => {
-  return {
-    statusCode: 200,
-    body: JSON.stringify(
-      {
-        message: 'Go Serverless v1.0! Your function executed successfully!',
-        input: event,
-      },
-      null,
-      2
-    ),
-  };
 
-  // Use this code if you don't use the http event with the LAMBDA-PROXY integration
-  // return { message: 'Go Serverless v1.0! Your function executed successfully!', event };
-};
+class Handler {
+  constructor({ rekoSvc }) {
+    this.rekoSvc = rekoSvc
+  }
+  async detectImageLabels(buffer) {
+    const result = await this.rekoSvc.detectLabels({
+      Image: {
+        Bytes: buffer
+      }
+    }).promise()
+
+    const workingItems = result.Labels
+      .filter(({ Confidence }) => Confidence > 80);
+
+    const names = workingItems
+      .map(({ Name }) => Name)
+      .join(' and ')
+    
+    return { names, workingItems }
+  }
+
+
+  async main(event) {
+    try {
+      const imgBuffer = await readFile('./images/golden.jpg')
+      const { names, workingItems} = await this.detectImageLabels(imgBuffer)
+      console.log({ names, workingItems })
+      
+      return {
+        statusCode: 200,
+        body: 'Hello João Andrade!'
+      }
+    } catch (error) {
+      console.log('Error**', error.stack)
+      return {
+        statusCode: 500,
+        body: 'Internal server error!'
+      }
+    }
+  }
+}
+
+// factory = cria todas minhas instâncias e passa as dependências para a classe
+const aws = require('aws-sdk')
+const reko = new aws.Rekognition()
+const handler = new Handler({
+  rekoSvc : reko
+})
+
+module.exports.main = handler.main.bind(handler)
