@@ -23,6 +23,15 @@ service: image-analysis
 provider:
   name: aws
   runtime: nodejs12.x
+  iamRoleStatements: 
+    - Effect: "Allow"
+      Action: 
+        - rekognition:DetectLabels
+      Resource: "*"
+    - Effect: "Allow"
+      Action: 
+        - translate:TranslateText
+      Resource: "*"
 
 # you can overwrite defaults here
 #  stage: dev
